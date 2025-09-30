@@ -1464,13 +1464,24 @@ def test_load_mcp_servers(tmp_path: Path):
     config = tmp_path / 'mcp.json'
 
     config.write_text('{"mcpServers": {"potato": {"url": "https://example.com/mcp"}}}')
-    assert load_mcp_servers(config) == snapshot([MCPServerStreamableHTTP(url='https://example.com/mcp')])
+    assert load_mcp_servers(config) == snapshot([MCPServerStreamableHTTP(url='https://example.com/mcp', id='potato')])
 
     config.write_text('{"mcpServers": {"potato": {"command": "python", "args": ["-m", "tests.mcp_server"]}}}')
-    assert load_mcp_servers(config) == snapshot([MCPServerStdio(command='python', args=['-m', 'tests.mcp_server'])])
+    assert load_mcp_servers(config) == snapshot(
+        [MCPServerStdio(command='python', args=['-m', 'tests.mcp_server'], id='potato')]
+    )
 
     config.write_text('{"mcpServers": {"potato": {"url": "https://example.com/sse"}}}')
-    assert load_mcp_servers(config) == snapshot([MCPServerSSE(url='https://example.com/sse')])
+    assert load_mcp_servers(config) == snapshot([MCPServerSSE(url='https://example.com/sse', id='potato')])
+
+    config.write_text(
+        '{"mcpServers": {"potato": {"url": "https://example.com/mcp"}, "carrot": {"url": "https://example.com/sse"}}}'
+    )
+    potato, carrot = load_mcp_servers(config, prefix_tools=True)
+    assert potato.id == 'potato'
+    assert potato.tool_prefix == 'potato'
+    assert carrot.id == 'carrot'
+    assert carrot.tool_prefix == 'carrot'
 
     with pytest.raises(FileNotFoundError):
         load_mcp_servers(tmp_path / 'does_not_exist.json')

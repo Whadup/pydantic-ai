@@ -166,6 +166,10 @@ class MCPServer(AbstractToolset[Any], ABC):
     def id(self) -> str | None:
         return self._id
 
+    @id.setter
+    def id(self, value: str | None):
+        self._id = value
+
     @property
     def label(self) -> str:
         if self.id:
@@ -935,11 +939,14 @@ class MCPServerConfig(BaseModel):
     ]
 
 
-def load_mcp_servers(config_path: str | Path) -> list[MCPServerStdio | MCPServerStreamableHTTP | MCPServerSSE]:
+def load_mcp_servers(
+    config_path: str | Path, prefix_tools: bool = False
+) -> list[MCPServerStdio | MCPServerStreamableHTTP | MCPServerSSE]:
     """Load MCP servers from a configuration file.
 
     Args:
         config_path: The path to the configuration file.
+        prefix_tools: Whether to prefix tool names with the server name. Defaults to False.
 
     Returns:
         A list of MCP servers.
@@ -954,4 +961,12 @@ def load_mcp_servers(config_path: str | Path) -> list[MCPServerStdio | MCPServer
         raise FileNotFoundError(f'Config file {config_path} not found')
 
     config = MCPServerConfig.model_validate_json(config_path.read_bytes())
-    return list(config.mcp_servers.values())
+
+    servers: list[MCPServerStdio | MCPServerStreamableHTTP | MCPServerSSE] = []
+    for name, server in config.mcp_servers.items():
+        server.id = name
+        if prefix_tools:
+            server.tool_prefix = name
+        servers.append(server)
+
+    return servers
